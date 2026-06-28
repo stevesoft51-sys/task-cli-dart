@@ -1,7 +1,12 @@
 import 'dart:io';
+import 'interfaces/prioritizable.dart';
 import 'models/priority.dart';
 import 'models/task.dart';
 import 'services/task_service.dart';
+
+void afficherInfos(Prioritizable p) {
+  print('  -> Interface: priorite=${p.priority}, echeance=${p.dueDate}');
+}
 
 Future<void> main() async {
   final service = await TaskService.create();
@@ -98,6 +103,7 @@ Future<void> _listTasks(TaskService service) async {
     final t = tasks[i];
     final type = t is UrgentTask ? 'URGENTE' : 'normale';
     print('${i + 1}. [${t.id}] $t ($type)');
+    afficherInfos(t);
   }
 }
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:test/test.dart';
 import 'package:task_cli/exceptions/task_exceptions.dart';
+import 'package:task_cli/interfaces/prioritizable.dart';
 import 'package:task_cli/models/priority.dart';
 import 'package:task_cli/models/task.dart';
 import 'package:task_cli/models/task_extensions.dart';
@@ -88,6 +89,19 @@ void main() {
       expect(info.title, equals('Test'));
       expect(info.priority, equals(Priority.medium));
       expect(info.isDone, isFalse);
+    });
+  });
+
+  group('Prioritizable interface', () {
+    test('Task implemente Prioritizable', () {
+      final task = RegularTask(id: '1', title: 'Test', priority: Priority.high);
+      expect(task, isA<Prioritizable>());
+      expect((task as Prioritizable).priority, equals(Priority.high));
+    });
+
+    test('UrgentTask implemente Prioritizable', () {
+      final task = UrgentTask(id: '2', title: 'Urgent', priority: Priority.medium);
+      expect(task, isA<Prioritizable>());
     });
   });
 

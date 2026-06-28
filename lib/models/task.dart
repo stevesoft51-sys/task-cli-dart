@@ -1,9 +1,12 @@
+import '../interfaces/prioritizable.dart';
 import 'priority.dart';
 
-abstract class Task {
+abstract class Task implements Prioritizable {
   final String id;
   String title;
+  @override
   Priority priority;
+  @override
   DateTime? dueDate;
   bool isCompleted;
   final DateTime createdAt;
