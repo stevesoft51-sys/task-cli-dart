@@ -1,7 +1,7 @@
 import '../interfaces/prioritizable.dart';
 import 'priority.dart';
 
-abstract class Task implements Prioritizable {
+sealed class Task implements Prioritizable {
   final String id;
   String title;
   @override

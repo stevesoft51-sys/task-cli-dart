@@ -20,6 +20,9 @@ class TaskService {
 
   Stream<Task> get taskChanges => _repository.changes;
 
+  Stream<UrgentTask> get urgentChanges =>
+    _repository.changes.where((t) => t is UrgentTask).cast<UrgentTask>();
+
   Future<List<Task>> listTasks({SortBy sortBy = SortBy.priority}) async {
     final tasks = await _repository.getAll();
     final sorted = [...tasks];

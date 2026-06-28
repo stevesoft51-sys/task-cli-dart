@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'exceptions/task_exceptions.dart';
 import 'interfaces/prioritizable.dart';
 import 'models/priority.dart';
 import 'models/task.dart';
+import 'models/task_extensions.dart';
 import 'services/task_service.dart';
 
 void afficherInfos(Prioritizable p) {
@@ -23,9 +25,12 @@ Future<void> main() async {
     '${(stats.rate * 100).toStringAsFixed(1)}% complete\n',
   );
 
-  // S'abonner au flux de changements
+  // S'abonner au flux de changements (stream + transformation)
   service.taskChanges.listen((task) {
     print('[Notification] Tache modifiee: ${task.title} (${task.type})');
+  });
+  service.urgentChanges.listen((task) {
+    print('[Urgent] Changement sur tache urgente: ${task.title}');
   });
 
   while (true) {
@@ -61,8 +66,14 @@ Future<void> main() async {
         default:
           print('Choix invalide.');
       }
+    } on TaskNotFoundException catch (e) {
+      print('Tache introuvable : $e');
+    } on TaskValidationException catch (e) {
+      print('Erreur de validation : $e');
+    } on InvalidPriorityException catch (e) {
+      print('Priorite invalide : $e');
     } catch (e) {
-      print('Erreur : $e');
+      print('Erreur inattendue : $e');
     }
   }
 }
@@ -101,7 +112,15 @@ Future<void> _listTasks(TaskService service) async {
   print('\nTaches :');
   for (var i = 0; i < tasks.length; i++) {
     final t = tasks[i];
-    final type = t is UrgentTask ? 'URGENTE' : 'normale';
+    // Pattern matching avec if-case (Dart 3)
+    String type;
+    if (t case UrgentTask(isOverdue: true)) {
+      type = 'URGENTE (EN RETARD)';
+    } else if (t case UrgentTask()) {
+      type = 'URGENTE';
+    } else {
+      type = 'normale';
+    }
     print('${i + 1}. [${t.id}] $t ($type)');
     afficherInfos(t);
   }
@@ -149,7 +168,15 @@ Future<void> _filterTasks(TaskService service) async {
 }
 
 Future<void> _showStats(TaskService service) async {
-  final stats = await service.getStats();
+  // Future.wait : executer deux appels en parallele
+  final results = await Future.wait([
+    service.getStats(),
+    service.joinAllTaskTitles(),
+  ]);
+
+  final stats = results[0] as ({int total, int completed, int pending, int urgent, double rate});
+  final titles = results[1] as String;
+
   print('\n--- Statistiques ---');
   print('Total: ${stats.total}');
   print('Terminees: ${stats.completed}');
@@ -157,7 +184,20 @@ Future<void> _showStats(TaskService service) async {
   print('Urgentes: ${stats.urgent}');
   print('Taux d\'achevement: ${(stats.rate * 100).toStringAsFixed(1)}%');
 
-  final titles = await service.joinAllTaskTitles();
+  // any / every (collections)
+  final all = await service.filterTasks((_) => true);
+  if (all.anyCompleted) {
+    print('Des taches sont terminees.');
+  }
+  if (all.allHighPriority) {
+    print('Toutes les taches sont haute priorite.');
+  }
+
+  final earliest = all.earliestDueDate;
+  if (earliest != null) {
+    print('Echeance la plus proche: ${earliest.title} (${earliest.dueDate})');
+  }
+
   if (titles.isNotEmpty) {
     print('Toutes les taches: $titles');
   }

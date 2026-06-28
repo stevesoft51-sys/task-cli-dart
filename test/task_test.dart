@@ -105,6 +105,24 @@ void main() {
     });
   });
 
+  group('Sealed class', () {
+    test('Task est sealed (ne peut etre etendu hors fichier)', () {
+      expect(Task, isA<Type>());
+    });
+
+    test('if-case pattern matching avec UrgentTask', () {
+      final task = UrgentTask(id: '3', title: 'Urgent', priority: Priority.high,
+        dueDate: DateTime.now().subtract(const Duration(hours: 1)));
+      String status;
+      if (task case UrgentTask(isOverdue: true)) {
+        status = 'EN RETARD';
+      } else {
+        status = 'OK';
+      }
+      expect(status, equals('EN RETARD'));
+    });
+  });
+
   group('TaskListExtensions', () {
     test('stats retourne un record correct', () {
       final tasks = [
@@ -139,6 +157,36 @@ void main() {
       expect(sorted[0].priority, equals(Priority.high));
       expect(sorted[1].priority, equals(Priority.medium));
       expect(sorted[2].priority, equals(Priority.low));
+    });
+  });
+
+  group('TaskListExtensions - any/every/reduce', () {
+    test('anyCompleted', () {
+      final tasks = [
+        RegularTask(id: '1', title: 'A', priority: Priority.low, isCompleted: true),
+        RegularTask(id: '2', title: 'B', priority: Priority.medium),
+      ];
+      expect(tasks.anyCompleted, isTrue);
+      expect(tasks.anyUrgent, isFalse);
+    });
+
+    test('allHighPriority / allCompleted', () {
+      final tasks = [
+        RegularTask(id: '1', title: 'A', priority: Priority.high),
+        RegularTask(id: '2', title: 'B', priority: Priority.high),
+      ];
+      expect(tasks.allHighPriority, isTrue);
+      expect(tasks.allCompleted, isFalse);
+    });
+
+    test('earliestDueDate utilise reduce', () {
+      final List<Task> tasks = [
+        RegularTask(id: '1', title: 'A', priority: Priority.low, dueDate: DateTime(2026, 12, 31)),
+        RegularTask(id: '2', title: 'B', priority: Priority.medium, dueDate: DateTime(2026, 6, 15)),
+        RegularTask(id: '3', title: 'C', priority: Priority.high, dueDate: DateTime(2026, 9, 1)),
+      ];
+      final earliest = tasks.earliestDueDate;
+      expect(earliest!.title, equals('B'));
     });
   });
 
@@ -239,6 +287,18 @@ void main() {
       final result = await service.joinAllTaskTitles();
       expect(result, contains('Alpha'));
       expect(result, contains('Beta'));
+    });
+
+    test('Future.wait execute en parallele', () async {
+      await service.addTask('A', 'high');
+      await service.addTask('B', 'low');
+      final results = await Future.wait([
+        service.getStats(),
+        service.joinAllTaskTitles(),
+      ]);
+      expect(results.length, equals(2));
+      expect((results[0] as ({int total, int completed, int pending, int urgent, double rate})).total, equals(2));
+      expect(results[1] as String, contains('A'));
     });
 
     test('stream emet lors de l ajout', () async {

@@ -33,6 +33,19 @@ extension TaskListExtensions on List<Task> {
       if (b.dueDate == null) return -1;
       return a.dueDate!.compareTo(b.dueDate!);
     });
+
+  bool get anyCompleted => any((t) => t.isCompleted);
+  bool get anyUrgent => any((t) => t is UrgentTask);
+  bool get allHighPriority => every((t) => t.priority == Priority.high);
+  bool get allCompleted => every((t) => t.isCompleted);
+
+  Task? get earliestDueDate =>
+    isEmpty ? null : reduce((a, b) {
+      if (a.dueDate == null && b.dueDate == null) return a;
+      if (a.dueDate == null) return b;
+      if (b.dueDate == null) return a;
+      return a.dueDate!.isBefore(b.dueDate!) ? a : b;
+    });
 }
 
 extension StringTaskExtensions on String {
