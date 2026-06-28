@@ -1,7 +1,8 @@
 abstract class Repository<T> {
-  List<T> getAll();
-  T? getById(String id);
-  void add(T item);
-  void update(T item);
-  void delete(String id);
+  Future<List<T>> getAll();
+  Future<T?> getById(String id);
+  Future<void> add(T item);
+  Future<void> update(T item);
+  Future<void> delete(String id);
+  Stream<T> get changes;
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../models/task.dart';
 import '../exceptions/task_exceptions.dart';
 import '../services/json_storage.dart';
@@ -5,26 +6,26 @@ import 'repository.dart';
 
 class TaskRepository extends Repository<Task> {
   final JsonStorage _storage;
-  List<Task> _tasks = [];
+  List<Task> _tasks;
+  final StreamController<Task> _controller = StreamController<Task>.broadcast();
 
-  TaskRepository({JsonStorage? storage}) : _storage = storage ?? JsonStorage() {
-    _load();
-  }
+  TaskRepository._(this._storage, this._tasks);
 
-  void _load() {
-    final data = _storage.read();
-    _tasks = data.map((json) => Task.fromJson(json)).toList();
-  }
-
-  void _save() {
-    _storage.write(_tasks.map((t) => t.toJson()).toList());
+  static Future<TaskRepository> create({JsonStorage? storage}) async {
+    final s = storage ?? JsonStorage();
+    final data = await s.read();
+    final tasks = data.map((json) => Task.fromJson(json)).toList();
+    return TaskRepository._(s, tasks);
   }
 
   @override
-  List<Task> getAll() => List.unmodifiable(_tasks);
+  Stream<Task> get changes => _controller.stream;
 
   @override
-  Task? getById(String id) {
+  Future<List<Task>> getAll() async => List.unmodifiable(_tasks);
+
+  @override
+  Future<Task?> getById(String id) async {
     try {
       return _tasks.firstWhere((t) => t.id == id);
     } catch (_) {
@@ -33,24 +34,37 @@ class TaskRepository extends Repository<Task> {
   }
 
   @override
-  void add(Task item) {
-    _tasks.add(item);
-    _save();
+  Future<void> add(Task item) async {
+    _tasks = [..._tasks, item];
+    await _save();
+    _controller.add(item);
   }
 
   @override
-  void update(Task item) {
+  Future<void> update(Task item) async {
     final index = _tasks.indexWhere((t) => t.id == item.id);
     if (index == -1) throw TaskNotFoundException(item.id);
-    _tasks[index] = item;
-    _save();
+    _tasks = [
+      for (var i = 0; i < _tasks.length; i++)
+        if (i == index) item else _tasks[i],
+    ];
+    await _save();
+    _controller.add(item);
   }
 
   @override
-  void delete(String id) {
+  Future<void> delete(String id) async {
     final index = _tasks.indexWhere((t) => t.id == id);
     if (index == -1) throw TaskNotFoundException(id);
-    _tasks.removeAt(index);
-    _save();
+    _tasks = _tasks.where((t) => t.id != id).toList();
+    await _save();
   }
+
+  Future<void> _save() async {
+    await _storage.write(
+      _tasks.map((t) => t.toJson()).toList(),
+    );
+  }
+
+  void dispose() => _controller.close();
 }

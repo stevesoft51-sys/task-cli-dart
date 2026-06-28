@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:path/path.dart' as p;
 
 class JsonStorage {
@@ -19,16 +21,17 @@ class JsonStorage {
     return dir.path;
   }
 
-  List<Map<String, dynamic>> read() {
+  Future<List<Map<String, dynamic>>> read() async {
     final file = File(filePath);
     if (!file.existsSync()) return [];
-    final content = file.readAsStringSync();
+    final content = await file.readAsString();
     if (content.trim().isEmpty) return [];
-    return (jsonDecode(content) as List).cast<Map<String, dynamic>>();
+    return Isolate.run(() => (jsonDecode(content) as List).cast<Map<String, dynamic>>());
   }
 
-  void write(List<Map<String, dynamic>> data) {
+  Future<void> write(List<Map<String, dynamic>> data) async {
     final file = File(filePath);
-    file.writeAsStringSync(jsonEncode(data));
+    final content = await Isolate.run(() => jsonEncode(data));
+    await file.writeAsString(content);
   }
 }

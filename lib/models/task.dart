@@ -19,6 +19,8 @@ abstract class Task {
 
   String get type;
 
+  String get statusSymbol => isCompleted ? '\u2713' : '\u25CB';
+
   void markCompleted() {
     isCompleted = true;
   }
@@ -26,19 +28,31 @@ abstract class Task {
   Map<String, dynamic> toJson();
 
   static Task fromJson(Map<String, dynamic> json) {
-    final type = json['type'] as String?;
-    if (type == 'urgent') {
-      return UrgentTask.fromJson(json);
-    }
-    return RegularTask.fromJson(json);
+    return switch (json['type'] as String?) {
+      'urgent' => UrgentTask.fromJson(json),
+      _ => RegularTask.fromJson(json),
+    };
   }
 
   @override
   String toString() {
-    final status = isCompleted ? '✓' : '○';
-    final due = dueDate != null ? ' | Échéance: $dueDate' : '';
-    return '[$status] $title ($priority)$due';
+    final due = dueDate != null ? ' | Echeance: $dueDate' : '';
+    return switch (this) {
+      UrgentTask(isOverdue: true, reminderMinutes: var rem) =>
+        '$statusSymbol $title ($priority)$due | Rappel: ${rem}min [EN RETARD]',
+      UrgentTask(reminderMinutes: var rem) =>
+        '$statusSymbol $title ($priority)$due | Rappel: ${rem}min',
+      _ => '$statusSymbol $title ($priority)$due',
+    };
   }
+
+  ({String type, String id, String title, Priority priority, bool isDone}) get info => (
+    type: type,
+    id: id,
+    title: title,
+    priority: priority,
+    isDone: isCompleted,
+  );
 }
 
 class RegularTask extends Task {
@@ -118,12 +132,4 @@ class UrgentTask extends Task {
             : null,
         reminderMinutes: json['reminderMinutes'] as int? ?? 30,
       );
-
-  @override
-  String toString() {
-    final base = super.toString();
-    final overdue = isOverdue ? ' EN RETARD' : '';
-    final reminder = ' | Rappel: $reminderMinutes min';
-    return '$base$reminder$overdue';
-  }
 }
