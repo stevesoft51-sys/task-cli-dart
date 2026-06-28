@@ -1,0 +1,5 @@
+.dart_tool/
+.packages
+*.iml
+.DS_Store
+build/
